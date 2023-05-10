@@ -1,0 +1,43 @@
+---
+- name: Install security patches on AKS Linux nodes
+  hosts: localhost
+  gather_facts: no
+  vars:
+    resource_group: "my-aks-rg"
+    cluster_name: "my-aks-cluster"
+  tasks:
+    - name: Get AKS node IP addresses
+      azure_rm_aks_info:
+        resource_group: "{{ resource_group }}"
+        name: "{{ cluster_name }}"
+      register: aks_nodes
+
+    - name: Add AKS node IP addresses to inventory
+      add_host:
+        name: "{{ item.ip_address }}"
+        groups: aks_nodes
+        ansible_user: azureuser
+        ansible_ssh_private_key_file: ~/.ssh/id_rsa
+      with_items: "{{ aks_nodes.agent_pools[0].nodes }}"
+
+- name: Install security patches on AKS Linux nodes
+  hosts: aks_nodes
+  gather_facts: yes
+  become: yes
+
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install security updates
+      apt:
+        name: "*-security"
+        state: latest
+        update_cache: yes
+      register: update_result
+      changed_when: "'0' not in update_result.stdout"
+
+    - name: Reboot nodes if required
+      reboot:
+      when: update_result.reboot_required == true

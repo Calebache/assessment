@@ -7,7 +7,7 @@
   vars:
     workspace_names:
       - dev
-      - production
+      - prod
     module_path: ../terraform/
 
   tasks:
