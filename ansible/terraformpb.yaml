@@ -1,0 +1,63 @@
+---
+- name: Create Terraform workspaces and deploy module
+  hosts: localhost
+  connection: local
+  gather_facts: no
+
+  vars:
+    workspace_names:
+      - dev
+      - production
+    module_path: ../terraform/
+
+  tasks:
+    - name: Get existing Terraform workspaces
+      shell: "terraform workspace list | awk '{print $1}'"
+      args:
+        chdir: "{{ module_path }}"
+      register: workspace_list
+      changed_when: false
+
+    - name: Create missing Terraform workspaces
+      command: >
+        terraform workspace new {{ item }}
+      args:
+        chdir: "{{ module_path }}"
+      with_items: "{{ workspace_names }}"
+      when: item not in workspace_list.stdout_lines
+    
+    - name: Terraform plan module to dev workspace
+      command: >
+        terraform plan -var-file=../terraform/environment/dev/dev.tfvars
+      args:
+        chdir: "{{ module_path }}"
+      environment:
+        TF_WORKSPACE: dev
+      when: "'dev' in workspace_list.stdout_lines"
+
+    - name: Terraform plan module prod workspace
+      command: >
+        terraform plan -var-file=../terraform/environment/dev/prod.tfvars
+      args:
+        chdir: "{{ module_path }}"
+      environment:
+        TF_WORKSPACE: dev
+      when: "'dev' in workspace_list.stdout_lines"
+    
+    - name: Deploy Terraform module to dev workspace
+      command: >
+        terraform apply -auto-approve -var-file=../terraform/environment/dev/dev.tfvars
+      args:
+        chdir: "{{ module_path }}"
+      environment:
+        TF_WORKSPACE: prod
+      when: "'dev' in workspace_list.stdout_lines"
+
+    - name: Deploy Terraform module to prod workspace
+      command: >
+        terraform apply -auto-approve -var-file=../terraform/environment/dev/prod.tfvars
+      args:
+        chdir: "{{ module_path }}"
+      environment:
+        TF_WORKSPACE: prod
+      when: "'dev' in workspace_list.stdout_lines"

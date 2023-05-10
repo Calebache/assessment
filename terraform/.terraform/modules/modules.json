@@ -1,0 +1,1 @@
+{"Modules":[{"Key":"","Source":"","Dir":"."},{"Key":"ResourceGroup","Source":"./modules/resource_grp","Dir":"modules/resource_grp"},{"Key":"aks_this","Source":"./modules/aks","Dir":"modules/aks"}]}
